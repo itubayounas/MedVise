@@ -41,3 +41,22 @@ export const getStats = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// Get all approved doctors (for patient booking dropdown)
+export const getAllDoctors = async (req, res) => {
+  try {
+    const doctors = await User.find({ role: "doctor", isApproved: true }).select("name email");
+    res.json(doctors);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all users (optional, for future use)
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("name email role isApproved createdAt");
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
