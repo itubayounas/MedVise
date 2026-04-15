@@ -1,16 +1,16 @@
 import express from "express";
-import { getPendingDoctors, approveDoctor,getAllDoctors, getStats, getAllUsers } from "../controllers/adminController.js";
-import authMiddleware from "../middleware/authMiddleware.js";
-import adminMiddleware from "../middleware/adminMiddleware.js";
+import { getPendingDoctors, approveDoctor, getStats, getAllDoctors, getAllUsers } from "../controllers/adminController.js";
+import authMiddleware   from "../middleware/authMiddleware.js";
+import adminMiddleware  from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
-router.use(authMiddleware, adminMiddleware);
+router.get("/all-doctors", authMiddleware, getAllDoctors);   // patients can access
+router.get("/all-users",   authMiddleware, adminMiddleware, getAllUsers);
 
+router.use(authMiddleware, adminMiddleware);
 router.get("/pending-doctors", getPendingDoctors);
-router.put("/approve/:id", approveDoctor);
-router.get("/stats", getStats);
-router.get("/all-doctors", getAllDoctors);
-router.get("/all-users", getAllUsers);
+router.put("/approve/:id",     approveDoctor);
+router.get("/stats",           getStats);
 
 export default router;

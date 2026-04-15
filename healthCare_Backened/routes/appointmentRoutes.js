@@ -1,11 +1,15 @@
 import express from "express";
-import { createAppointment, getPatientAppointments } from "../controllers/appointmentController.js";
+import {
+  createAppointment,
+  getPatientAppointments,
+  getDoctorBookedSlots
+} from "../controllers/appointmentController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// patient creates and views their appointments
-router.post("/", authMiddleware, createAppointment);
-router.get("/", authMiddleware, getPatientAppointments);
+router.post("/",                      authMiddleware, createAppointment);
+router.get("/",                       authMiddleware, getPatientAppointments);
+router.get("/booked-slots/:id",       authMiddleware, getDoctorBookedSlots); // NEW
 
 export default router;

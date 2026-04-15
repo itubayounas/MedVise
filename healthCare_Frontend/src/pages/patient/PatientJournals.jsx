@@ -5,141 +5,346 @@ import Spinner from "../../components/Spinner";
 import toast from "react-hot-toast";
 
 const MOODS = ["Happy","Sad","Stressed","Anxious","Calm","Angry","Unwell"];
-const MOOD_EMOJI  = { Happy:"😊", Sad:"😔", Stressed:"😤", Anxious:"😰", Calm:"😌", Angry:"😠", Unwell:"🤒" };
-const MOOD_COLORS = {
-  Happy:"bg-yellow-100 text-yellow-800 border-yellow-300",
-  Sad:"bg-blue-100 text-blue-800 border-blue-300",
-  Stressed:"bg-red-100 text-red-800 border-red-300",
-  Anxious:"bg-orange-100 text-orange-800 border-orange-300",
-  Calm:"bg-sage-100 text-sage-700 border-sage-300",
-  Angry:"bg-red-200 text-red-900 border-red-400",
-  Unwell:"bg-purple-100 text-purple-800 border-purple-300",
+
+const MOOD_EMOJI = {
+  Happy:"😊", Sad:"😔", Stressed:"😤",
+  Anxious:"😰", Calm:"😌", Angry:"😠", Unwell:"🤒",
 };
+
+const MOOD_STYLE = {
+  Happy:   { background:"#fef9c3", color:"#854d0e", border:"#fde047" },
+  Sad:     { background:"#dbeafe", color:"#1e40af", border:"#93c5fd" },
+  Stressed:{ background:"#fee2e2", color:"#991b1b", border:"#fca5a5" },
+  Anxious: { background:"#ffedd5", color:"#9a3412", border:"#fdba74" },
+  Calm:    { background:"#dcfce7", color:"#166534", border:"#86efac" },
+  Angry:   { background:"#fecaca", color:"#7f1d1d", border:"#f87171" },
+  Unwell:  { background:"#f3e8ff", color:"#6b21a8", border:"#d8b4fe" },
+};
+
 const EMPTY = { title:"", content:"", mood:"" };
 
 export default function PatientJournals() {
-  const [journals, setJournals] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [view, setView]         = useState("list"); // list | form | detail
-  const [selected, setSelected] = useState(null);
-  const [form, setForm]         = useState(EMPTY);
+  const [journals, setJournals]     = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [view, setView]             = useState("list");
+  const [selected, setSelected]     = useState(null);
+  const [form, setForm]             = useState(EMPTY);
   const [submitting, setSubmitting] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
+  const [deleteId, setDeleteId]     = useState(null);
 
-  const fetch = async () => {
-    const { data } = await getJournals();
-    setJournals(data); setLoading(false);
+  const fetchData = async () => {
+    try {
+      const { data } = await getJournals();
+      setJournals(data);
+    } catch { toast.error("Failed to load journals"); }
+    finally { setLoading(false); }
   };
-  useEffect(() => { fetch(); }, []);
+
+  useEffect(() => { fetchData(); }, []);
 
   const openNew    = () => { setForm(EMPTY); setSelected(null); setView("form"); };
   const openEdit   = (j) => { setForm({ title:j.title, content:j.content, mood:j.mood||"" }); setSelected(j); setView("form"); };
   const openDetail = (j) => { setSelected(j); setView("detail"); };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setSubmitting(true);
+    e.preventDefault();
+    setSubmitting(true);
     try {
-      if (selected) { await updateJournal(selected._id, form); toast.success("Journal updated! ✏️"); }
-      else          { await createJournal(form); toast.success("Journal entry saved! 📓"); }
-      await fetch(); setView("list");
-    } catch { toast.error("Failed to save journal"); }
+      if (selected) {
+        await updateJournal(selected._id, form);
+        toast.success("Journal updated!");
+      } else {
+        await createJournal(form);
+        toast.success("Journal entry saved!");
+      }
+      await fetchData();
+      setView("list");
+    } catch { toast.error("Failed to save. Please try again."); }
     finally { setSubmitting(false); }
   };
 
   const handleDelete = async (id) => {
-    await deleteJournal(id);
-    toast.success("Journal deleted.");
-    setDeleteId(null);
-    if (view === "detail") setView("list");
-    fetch();
+    try {
+      await deleteJournal(id);
+      toast.success("Entry deleted.");
+      setDeleteId(null);
+      if (view === "detail") setView("list");
+      fetchData();
+    } catch { toast.error("Failed to delete."); }
   };
 
   if (loading) return <Layout><Spinner /></Layout>;
 
-  // ── Detail ──
+  // ── DETAIL VIEW ────────────────────────────────────
   if (view === "detail" && selected) {
     const j = journals.find(x => x._id === selected._id) || selected;
+    const ms = j.mood ? MOOD_STYLE[j.mood] : null;
+
     return (
       <Layout>
-        <div className="animate-fade-up max-w-2xl mx-auto">
-          <button onClick={() => setView("list")} className="text-sage-600 hover:underline text-sm mb-4 flex items-center gap-2">
-            <i className="fa-solid fa-arrow-left"></i>Back to journals
+        <div style={{ maxWidth:"720px", margin:"0 auto", padding:"0 16px" }}>
+          {/* Back */}
+          <button onClick={() => setView("list")} style={{
+            display:"flex", alignItems:"center", gap:"8px",
+            background:"none", border:"none", cursor:"pointer",
+            color:"#558055", fontSize:"14px", fontWeight:500,
+            marginBottom:"24px", padding:"4px 0",
+          }}>
+            <i className="fa-solid fa-arrow-left" style={{ fontSize:"12px" }}></i>
+            Back to journals
           </button>
-          <div className="card shadow-md">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-charcoal-900">{j.title}</h1>
-                <p className="text-sm text-sage-500 mt-1">
-                  <i className="fa-regular fa-calendar mr-1.5"></i>
-                  {new Date(j.createdAt).toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}
+
+          {/* Card */}
+          <div style={{
+            background:"#fff", borderRadius:"16px",
+            border:"0.5px solid #e8dbc0",
+            boxShadow:"0 4px 24px rgba(0,0,0,0.07)",
+            overflow:"hidden",
+          }}>
+            {/* Card header */}
+            <div style={{
+              background:"linear-gradient(135deg, #f4f7f4, #f9f6ed)",
+              padding:"28px 28px 24px",
+              borderBottom:"0.5px solid #e8dbc0",
+            }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"16px" }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <h1 style={{
+                    fontFamily:"var(--font-display)",
+                    fontSize:"clamp(1.25rem,3vw,1.75rem)",
+                    fontWeight:700, color:"#141814",
+                    marginBottom:"10px", lineHeight:1.25,
+                    wordBreak:"break-word",
+                  }}>{j.title}</h1>
+                  <p style={{ fontSize:"13px", color:"#558055", display:"flex", alignItems:"center", gap:"6px" }}>
+                    <i className="fa-regular fa-calendar"></i>
+                    {new Date(j.createdAt).toLocaleDateString("en-US",{
+                      weekday:"long", year:"numeric", month:"long", day:"numeric",
+                    })}
+                  </p>
+                </div>
+                {j.mood && ms && (
+                  <span style={{
+                    display:"inline-flex", alignItems:"center", gap:"6px",
+                    padding:"6px 14px", borderRadius:"20px",
+                    fontSize:"13px", fontWeight:600, flexShrink:0,
+                    background:ms.background, color:ms.color,
+                    border:`1.5px solid ${ms.border}`,
+                  }}>
+                    <span style={{ fontSize:"16px" }}>{MOOD_EMOJI[j.mood]}</span>
+                    {j.mood}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding:"28px" }}>
+              <div style={{
+                background:"#fdfcf8", borderRadius:"12px",
+                padding:"20px 24px", border:"0.5px solid #f2ebda",
+                minHeight:"140px",
+              }}>
+                <p style={{
+                  fontSize:"15px", color:"#1e2420",
+                  lineHeight:1.75, whiteSpace:"pre-wrap",
+                }}>
+                  {j.content}
                 </p>
               </div>
-              {j.mood && (
-                <span className={`text-sm px-3 py-1 rounded-full border font-semibold flex-shrink-0 ${MOOD_COLORS[j.mood]||""}`}>
-                  {MOOD_EMOJI[j.mood]} {j.mood}
-                </span>
-              )}
-            </div>
-            <div className="bg-cream-50 rounded-xl p-4 border border-cream-200">
-              <p className="text-charcoal-800 leading-relaxed whitespace-pre-wrap text-sm">{j.content}</p>
-            </div>
-            <div className="flex gap-3 mt-5 pt-4 border-t border-cream-200">
-              <button onClick={() => openEdit(j)} className="btn-secondary btn-sm">
-                <i className="fa-solid fa-pen mr-1.5"></i>Edit
-              </button>
-              <button onClick={() => setDeleteId(j._id)} className="btn-danger btn-sm">
-                <i className="fa-solid fa-trash mr-1.5"></i>Delete
-              </button>
+
+              {/* Actions */}
+              <div style={{ display:"flex", gap:"12px", marginTop:"24px", paddingTop:"20px", borderTop:"0.5px solid #f2ebda" }}>
+                <button onClick={() => openEdit(j)} style={{
+                  flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+                  gap:"8px", padding:"11px 20px", borderRadius:"10px",
+                  border:"1.5px solid #ccdccc", background:"#f4f7f4",
+                  color:"#426542", fontSize:"14px", fontWeight:600, cursor:"pointer",
+                  transition:"all .15s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background="#e6ede6"}
+                  onMouseLeave={e => e.currentTarget.style.background="#f4f7f4"}>
+                  <i className="fa-solid fa-pen" style={{ fontSize:"12px" }}></i>
+                  Edit Entry
+                </button>
+                <button onClick={() => setDeleteId(j._id)} style={{
+                  flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+                  gap:"8px", padding:"11px 20px", borderRadius:"10px",
+                  border:"1.5px solid #fca5a5", background:"#fff1f2",
+                  color:"#dc2626", fontSize:"14px", fontWeight:600, cursor:"pointer",
+                  transition:"all .15s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background="#fee2e2"}
+                  onMouseLeave={e => e.currentTarget.style.background="#fff1f2"}>
+                  <i className="fa-solid fa-trash" style={{ fontSize:"12px" }}></i>
+                  Delete Entry
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        {deleteId && <DeleteModal onConfirm={() => handleDelete(deleteId)} onCancel={() => setDeleteId(null)} />}
+
+        {deleteId && (
+          <DeleteModal
+            onConfirm={() => handleDelete(deleteId)}
+            onCancel={() => setDeleteId(null)}
+          />
+        )}
       </Layout>
     );
   }
 
-  // ── Form ──
+  // ── FORM VIEW ──────────────────────────────────────
   if (view === "form") {
     return (
       <Layout>
-        <div className="animate-fade-up max-w-2xl mx-auto">
-          <button onClick={() => setView("list")} className="text-sage-600 hover:underline text-sm mb-4 flex items-center gap-2">
-            <i className="fa-solid fa-arrow-left"></i>Back to journals
+        <div style={{ maxWidth:"680px", margin:"0 auto", padding:"0 16px" }}>
+          {/* Back */}
+          <button onClick={() => setView("list")} style={{
+            display:"flex", alignItems:"center", gap:"8px",
+            background:"none", border:"none", cursor:"pointer",
+            color:"#558055", fontSize:"14px", fontWeight:500,
+            marginBottom:"24px", padding:"4px 0",
+          }}>
+            <i className="fa-solid fa-arrow-left" style={{ fontSize:"12px" }}></i>
+            Back to journals
           </button>
-          <div className="card shadow-md">
-            <h2 className="font-display text-2xl font-semibold text-charcoal-900 mb-6">
-              <i className={`fa-solid ${selected ? "fa-pen" : "fa-plus"} text-sage-500 mr-2`}></i>
-              {selected ? "Edit Entry" : "New Journal Entry"}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="label">Title</label>
-                <input className="input" placeholder="What's on your mind today?" value={form.title}
-                  onChange={e => setForm({...form, title:e.target.value})} required />
+
+          <div style={{
+            background:"#fff", borderRadius:"16px",
+            border:"0.5px solid #e8dbc0",
+            boxShadow:"0 4px 24px rgba(0,0,0,0.07)",
+            overflow:"hidden",
+          }}>
+            {/* Form header */}
+            <div style={{
+              background:"linear-gradient(135deg, #f4f7f4, #f9f6ed)",
+              padding:"22px 28px",
+              borderBottom:"0.5px solid #e8dbc0",
+              display:"flex", alignItems:"center", gap:"14px",
+            }}>
+              <div style={{
+                width:"40px", height:"40px", borderRadius:"50%", flexShrink:0,
+                background: selected ? "#fef3c7" : "#e6ede6",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}>
+                <i className={`fa-solid ${selected ? "fa-pen" : "fa-plus"}`}
+                  style={{ color: selected ? "#d97706" : "#426542", fontSize:"15px" }}></i>
               </div>
+              <h2 style={{
+                fontFamily:"var(--font-display)",
+                fontSize:"1.4rem", fontWeight:700, color:"#141814",
+              }}>
+                {selected ? "Edit Journal Entry" : "New Journal Entry"}
+              </h2>
+            </div>
+
+            {/* Form body */}
+            <form onSubmit={handleSubmit} style={{ padding:"28px", display:"flex", flexDirection:"column", gap:"20px" }}>
+
+              {/* Title */}
               <div>
-                <label className="label"><i className="fa-solid fa-face-smile text-amber-400 mr-1.5"></i>How are you feeling?</label>
-                <div className="flex flex-wrap gap-2">
-                  {MOODS.map(m => (
-                    <button type="button" key={m} onClick={() => setForm({...form, mood: form.mood===m ? "" : m})}
-                      className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition-all ${
-                        form.mood===m ? (MOOD_COLORS[m]||"bg-sage-100 text-sage-700 border-sage-300") : "bg-white border-cream-300 text-charcoal-700 hover:border-sage-300"
-                      }`}>
-                      {MOOD_EMOJI[m]} {m}
-                    </button>
-                  ))}
+                <label style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", fontWeight:600, color:"#1e2420", marginBottom:"8px" }}>
+                  <i className="fa-solid fa-heading" style={{ color:"#779f77", fontSize:"11px" }}></i>
+                  Entry Title
+                </label>
+                <input
+                  style={{
+                    width:"100%", padding:"11px 14px", borderRadius:"10px",
+                    border:"1.5px solid #e8dbc0", outline:"none",
+                    fontSize:"14px", color:"#141814", background:"#fdfcf8",
+                    transition:"border-color .15s",
+                  }}
+                  placeholder="What's on your mind today?"
+                  value={form.title}
+                  onChange={e => setForm({...form, title:e.target.value})}
+                  onFocus={e => e.target.style.borderColor="#779f77"}
+                  onBlur={e => e.target.style.borderColor="#e8dbc0"}
+                  required
+                />
+              </div>
+
+              {/* Mood picker */}
+              <div>
+                <label style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", fontWeight:600, color:"#1e2420", marginBottom:"10px" }}>
+                  <i className="fa-solid fa-face-smile" style={{ color:"#f59e0b", fontSize:"12px" }}></i>
+                  How are you feeling?
+                </label>
+                <div style={{
+                  display:"grid",
+                  gridTemplateColumns:"repeat(auto-fill, minmax(120px, 1fr))",
+                  gap:"8px",
+                }}>
+                  {MOODS.map(m => {
+                    const ms = MOOD_STYLE[m];
+                    const isSelected = form.mood === m;
+                    return (
+                      <button type="button" key={m}
+                        onClick={() => setForm({...form, mood: form.mood === m ? "" : m})}
+                        style={{
+                          display:"flex", alignItems:"center", gap:"7px",
+                          padding:"9px 12px", borderRadius:"10px",
+                          fontSize:"13px", fontWeight:600, cursor:"pointer",
+                          transition:"all .15s",
+                          background: isSelected ? ms.background : "#fff",
+                          color:       isSelected ? ms.color    : "#6b7280",
+                          border:      isSelected ? `1.5px solid ${ms.border}` : "1.5px solid #e8dbc0",
+                          transform:   isSelected ? "scale(1.03)" : "scale(1)",
+                        }}>
+                        <span style={{ fontSize:"16px" }}>{MOOD_EMOJI[m]}</span>
+                        {m}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Content */}
               <div>
-                <label className="label">Your thoughts</label>
-                <textarea className="input resize-none" rows={10} placeholder="Write freely — this is your private space..."
-                  value={form.content} onChange={e => setForm({...form, content:e.target.value})} required />
+                <label style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", fontWeight:600, color:"#1e2420", marginBottom:"8px" }}>
+                  <i className="fa-solid fa-pen-fancy" style={{ color:"#779f77", fontSize:"11px" }}></i>
+                  Your Thoughts
+                </label>
+                <textarea
+                  rows={9}
+                  style={{
+                    width:"100%", padding:"11px 14px", borderRadius:"10px",
+                    border:"1.5px solid #e8dbc0", outline:"none",
+                    fontSize:"14px", color:"#141814", background:"#fdfcf8",
+                    resize:"vertical", lineHeight:1.7, fontFamily:"inherit",
+                    transition:"border-color .15s",
+                  }}
+                  placeholder="Write freely — this is your private space..."
+                  value={form.content}
+                  onChange={e => setForm({...form, content:e.target.value})}
+                  onFocus={e => e.target.style.borderColor="#779f77"}
+                  onBlur={e => e.target.style.borderColor="#e8dbc0"}
+                  required
+                />
               </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? <><i className="fa-solid fa-spinner fa-spin mr-2"></i>Saving…</> : <><i className="fa-solid fa-floppy-disk mr-2"></i>{selected ? "Update" : "Save Entry"}</>}
+
+              {/* Buttons */}
+              <div style={{ display:"flex", gap:"12px", paddingTop:"8px", borderTop:"0.5px solid #f2ebda" }}>
+                <button type="submit" disabled={submitting} style={{
+                  flex:2, display:"flex", alignItems:"center", justifyContent:"center",
+                  gap:"8px", padding:"12px 20px", borderRadius:"10px",
+                  border:"none", background: submitting ? "#9ca3af" : "#426542",
+                  color:"#fff", fontSize:"14px", fontWeight:600,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}>
+                  {submitting
+                    ? <><i className="fa-solid fa-spinner fa-spin"></i>Saving…</>
+                    : <><i className="fa-solid fa-floppy-disk"></i>{selected ? "Update Entry" : "Save Entry"}</>
+                  }
                 </button>
-                <button type="button" className="btn-secondary" onClick={() => setView("list")}>Cancel</button>
+                <button type="button" onClick={() => setView("list")} style={{
+                  flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+                  padding:"12px 20px", borderRadius:"10px",
+                  border:"1.5px solid #e8dbc0", background:"#fff",
+                  color:"#374151", fontSize:"14px", fontWeight:600, cursor:"pointer",
+                }}>
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
@@ -148,103 +353,309 @@ export default function PatientJournals() {
     );
   }
 
-  // ── List ──
+  // ── LIST VIEW ──────────────────────────────────────
   const moodCounts = {};
   journals.forEach(j => { if (j.mood) moodCounts[j.mood] = (moodCounts[j.mood]||0)+1; });
-  const topMood = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
+  const topMood = Object.entries(moodCounts).sort((a,b) => b[1]-a[1])[0];
 
   return (
     <Layout>
-      <div className="animate-fade-up">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
-          <h1 className="page-title"><i className="fa-solid fa-book-open text-sage-500 mr-2"></i>My Journal</h1>
-          <button onClick={openNew} className="btn-primary">
-            <i className="fa-solid fa-plus mr-2"></i>New Entry
+      <div style={{ maxWidth:"1100px", margin:"0 auto", padding:"0 16px" }}>
+
+        {/* Page header */}
+        <div style={{
+          display:"flex", alignItems:"center",
+          justifyContent:"space-between", gap:"16px",
+          marginBottom:"28px", flexWrap:"wrap",
+        }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
+            <div style={{
+              width:"46px", height:"46px", borderRadius:"12px", flexShrink:0,
+              background:"linear-gradient(135deg,#e6ede6,#ccdccc)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              <i className="fa-solid fa-book-open" style={{ color:"#426542", fontSize:"18px" }}></i>
+            </div>
+            <div>
+              <h1 style={{
+                fontFamily:"var(--font-display)",
+                fontSize:"clamp(1.4rem,3vw,2rem)",
+                fontWeight:700, color:"#141814", lineHeight:1.2,
+              }}>My Journal</h1>
+              <p style={{ fontSize:"13px", color:"#6b8f6b", marginTop:"2px" }}>
+                Your private mental wellness diary
+              </p>
+            </div>
+          </div>
+
+          <button onClick={openNew} style={{
+            display:"flex", alignItems:"center", gap:"8px",
+            padding:"10px 20px", borderRadius:"10px",
+            border:"none", background:"#426542", color:"#fff",
+            fontSize:"14px", fontWeight:600, cursor:"pointer",
+            boxShadow:"0 2px 8px rgba(66,101,66,.3)",
+            flexShrink:0,
+          }}
+            onMouseEnter={e => e.currentTarget.style.background="#364f36"}
+            onMouseLeave={e => e.currentTarget.style.background="#426542"}>
+            <i className="fa-solid fa-plus" style={{ fontSize:"12px" }}></i>
+            New Entry
           </button>
         </div>
-        <p className="page-sub">Your private mental wellness diary</p>
 
         {/* Summary banner */}
         {journals.length > 0 && (
-          <div className="card mb-6 bg-gradient-to-r from-sage-50 to-cream-100 border-sage-200 flex flex-wrap items-center gap-6">
+          <div style={{
+            background:"linear-gradient(135deg, #f4f7f4, #f9f6ed)",
+            borderRadius:"14px", padding:"20px 24px",
+            border:"0.5px solid #ccdccc",
+            marginBottom:"24px",
+            display:"flex", flexWrap:"wrap", gap:"32px", alignItems:"center",
+          }}>
             <div>
-              <p className="text-sm text-sage-600 font-medium">Total entries</p>
-              <p className="text-3xl font-display font-bold text-charcoal-900">{journals.length}</p>
+              <p style={{ fontSize:"11px", fontWeight:700, color:"#779f77", textTransform:"uppercase", letterSpacing:".05em", marginBottom:"4px" }}>
+                Total entries
+              </p>
+              <p style={{ fontFamily:"var(--font-display)", fontSize:"2.25rem", fontWeight:700, color:"#141814", lineHeight:1 }}>
+                {journals.length}
+              </p>
             </div>
             {topMood && (
               <div>
-                <p className="text-sm text-sage-600 font-medium">Most frequent mood</p>
-                <p className="text-2xl font-display font-bold text-charcoal-900">
-                  {MOOD_EMOJI[topMood[0]]} {topMood[0]}
-                  <span className="text-base font-body font-normal text-sage-500 ml-1">({topMood[1]}×)</span>
+                <p style={{ fontSize:"11px", fontWeight:700, color:"#779f77", textTransform:"uppercase", letterSpacing:".05em", marginBottom:"4px" }}>
+                  Most frequent mood
+                </p>
+                <p style={{ fontFamily:"var(--font-display)", fontSize:"1.5rem", fontWeight:700, color:"#141814", display:"flex", alignItems:"center", gap:"8px" }}>
+                  <span style={{ fontSize:"1.75rem" }}>{MOOD_EMOJI[topMood[0]]}</span>
+                  {topMood[0]}
+                  <span style={{ fontSize:"14px", fontWeight:400, color:"#779f77" }}>
+                    ({topMood[1]}×)
+                  </span>
                 </p>
               </div>
             )}
           </div>
         )}
 
+        {/* Empty state */}
         {journals.length === 0 ? (
-          <div className="card empty-state py-16">
-            <i className="fa-solid fa-book-medical text-5xl mb-4 block"></i>
-            <p className="font-display text-xl font-semibold text-charcoal-900 mb-1">Start your wellness journey</p>
-            <p className="text-sm text-sage-500 mb-4">Regular journaling helps you understand your emotional patterns.</p>
-            <button onClick={openNew} className="btn-primary">
-              <i className="fa-solid fa-pen mr-2"></i>Write your first entry
+          <div style={{
+            background:"#fff", borderRadius:"16px",
+            border:"0.5px solid #e8dbc0",
+            padding:"64px 24px",
+            display:"flex", flexDirection:"column",
+            alignItems:"center", textAlign:"center", gap:"16px",
+          }}>
+            <div style={{
+              width:"72px", height:"72px", borderRadius:"50%",
+              background:"linear-gradient(135deg,#e6ede6,#ccdccc)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              <i className="fa-solid fa-book-medical" style={{ color:"#426542", fontSize:"28px" }}></i>
+            </div>
+            <div>
+              <h2 style={{
+                fontFamily:"var(--font-display)",
+                fontSize:"1.4rem", fontWeight:700, color:"#141814", marginBottom:"8px",
+              }}>
+                Start your wellness journey
+              </h2>
+              <p style={{ fontSize:"14px", color:"#6b7280", lineHeight:1.6, maxWidth:"340px" }}>
+                Regular journaling helps you understand your emotional patterns and track your mental wellness over time.
+              </p>
+            </div>
+            <button onClick={openNew} style={{
+              marginTop:"8px", display:"flex", alignItems:"center", gap:"8px",
+              padding:"12px 28px", borderRadius:"10px",
+              border:"none", background:"#426542", color:"#fff",
+              fontSize:"14px", fontWeight:600, cursor:"pointer",
+            }}>
+              <i className="fa-solid fa-pen" style={{ fontSize:"12px" }}></i>
+              Write your first entry
             </button>
           </div>
+
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {journals.map((j, i) => (
-              <div key={j._id} className="card card-hover cursor-pointer group animate-fade-up"
-                style={{ animationDelay:`${i*50}ms`, opacity:0, animationFillMode:"forwards" }}
-                onClick={() => openDetail(j)}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-display font-semibold text-charcoal-900 line-clamp-1 group-hover:text-sage-700 transition-colors">{j.title}</h3>
-                  {j.mood && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold flex-shrink-0 ${MOOD_COLORS[j.mood]||""}`}>
-                      {MOOD_EMOJI[j.mood]}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-charcoal-600 line-clamp-3 leading-relaxed mb-3">{j.content}</p>
-                <div className="flex items-center justify-between pt-2 border-t border-cream-100 mt-auto">
-                  <p className="text-xs text-sage-400">
-                    <i className="fa-regular fa-calendar mr-1"></i>
-                    {new Date(j.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+          /* Journal card grid */
+          <div style={{
+            display:"grid",
+            gridTemplateColumns:"repeat(auto-fill, minmax(min(100%, 300px), 1fr))",
+            gap:"16px",
+          }}>
+            {journals.map((j, i) => {
+              const ms = j.mood ? MOOD_STYLE[j.mood] : null;
+              return (
+                <div key={j._id}
+                  onClick={() => openDetail(j)}
+                  style={{
+                    background:"#fff", borderRadius:"14px",
+                    border:"0.5px solid #e8dbc0",
+                    padding:"20px",
+                    cursor:"pointer",
+                    transition:"all .2s",
+                    animation:`fadeUp .4s ease ${i*50}ms forwards`,
+                    opacity:0,
+                    display:"flex", flexDirection:"column", gap:"10px",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.boxShadow="0 8px 28px rgba(0,0,0,.1)";
+                    e.currentTarget.style.transform="translateY(-2px)";
+                    e.currentTarget.style.borderColor="#ccdccc";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.boxShadow="none";
+                    e.currentTarget.style.transform="translateY(0)";
+                    e.currentTarget.style.borderColor="#e8dbc0";
+                  }}>
+
+                  {/* Card top row */}
+                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px" }}>
+                    <h3 style={{
+                      fontFamily:"var(--font-display)",
+                      fontSize:"1rem", fontWeight:700, color:"#141814",
+                      lineHeight:1.3, flex:1,
+                      overflow:"hidden", display:"-webkit-box",
+                      WebkitLineClamp:2, WebkitBoxOrient:"vertical",
+                    }}>
+                      {j.title}
+                    </h3>
+                    {j.mood && ms && (
+                      <span style={{
+                        display:"inline-flex", alignItems:"center", gap:"4px",
+                        padding:"4px 10px", borderRadius:"20px", flexShrink:0,
+                        fontSize:"11px", fontWeight:700,
+                        background:ms.background, color:ms.color,
+                        border:`1px solid ${ms.border}`,
+                      }}>
+                        <span style={{ fontSize:"13px" }}>{MOOD_EMOJI[j.mood]}</span>
+                        {j.mood}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Preview */}
+                  <p style={{
+                    fontSize:"13px", color:"#6b7280", lineHeight:1.6,
+                    overflow:"hidden", display:"-webkit-box",
+                    WebkitLineClamp:3, WebkitBoxOrient:"vertical",
+                    flex:1,
+                  }}>
+                    {j.content}
                   </p>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={e => { e.stopPropagation(); openEdit(j); }}
-                      className="text-xs text-sage-600 hover:text-sage-800 font-semibold">
-                      <i className="fa-solid fa-pen mr-1"></i>Edit
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); setDeleteId(j._id); }}
-                      className="text-xs text-red-400 hover:text-red-600 font-semibold">
-                      <i className="fa-solid fa-trash mr-1"></i>Del
-                    </button>
+
+                  {/* Footer row */}
+                  <div style={{
+                    display:"flex", alignItems:"center",
+                    justifyContent:"space-between",
+                    paddingTop:"10px",
+                    borderTop:"0.5px solid #f2ebda",
+                    marginTop:"auto",
+                  }}>
+                    <p style={{ fontSize:"12px", color:"#9cae9c", display:"flex", alignItems:"center", gap:"5px" }}>
+                      <i className="fa-regular fa-calendar" style={{ fontSize:"11px" }}></i>
+                      {new Date(j.createdAt).toLocaleDateString("en-US",{
+                        month:"short", day:"numeric", year:"numeric",
+                      })}
+                    </p>
+                    <div style={{ display:"flex", gap:"4px" }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); openEdit(j); }}
+                        style={{
+                          width:"28px", height:"28px", borderRadius:"7px",
+                          border:"0.5px solid #e8dbc0", background:"#f4f7f4",
+                          cursor:"pointer", display:"flex",
+                          alignItems:"center", justifyContent:"center",
+                          color:"#558055",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background="#e6ede6"}
+                        onMouseLeave={e => e.currentTarget.style.background="#f4f7f4"}>
+                        <i className="fa-solid fa-pen" style={{ fontSize:"10px" }}></i>
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setDeleteId(j._id); }}
+                        style={{
+                          width:"28px", height:"28px", borderRadius:"7px",
+                          border:"0.5px solid #fca5a5", background:"#fff1f2",
+                          cursor:"pointer", display:"flex",
+                          alignItems:"center", justifyContent:"center",
+                          color:"#dc2626",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background="#fee2e2"}
+                        onMouseLeave={e => e.currentTarget.style.background="#fff1f2"}>
+                        <i className="fa-solid fa-trash" style={{ fontSize:"10px" }}></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
-      {deleteId && <DeleteModal onConfirm={() => handleDelete(deleteId)} onCancel={() => setDeleteId(null)} />}
+
+      {deleteId && (
+        <DeleteModal
+          onConfirm={() => handleDelete(deleteId)}
+          onCancel={() => setDeleteId(null)}
+        />
+      )}
     </Layout>
   );
 }
 
+// ── Delete Modal ───────────────────────────────────────────
 function DeleteModal({ onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-fade-in">
-        <div className="text-center mb-4">
-          <i className="fa-solid fa-triangle-exclamation text-red-400 text-4xl mb-2 block"></i>
-          <h3 className="font-display text-lg font-bold text-charcoal-900">Delete this entry?</h3>
-          <p className="text-sm text-sage-500 mt-1">This action cannot be undone.</p>
+    <div style={{
+      position:"fixed", inset:0,
+      background:"rgba(0,0,0,0.45)",
+      backdropFilter:"blur(4px)",
+      zIndex:100,
+      display:"flex", alignItems:"center", justifyContent:"center",
+      padding:"16px",
+    }}>
+      <div style={{
+        background:"#fff", borderRadius:"16px",
+        padding:"32px 28px", maxWidth:"400px", width:"100%",
+        boxShadow:"0 20px 60px rgba(0,0,0,.15)",
+        animation:"fadeUp .25s ease forwards",
+      }}>
+        <div style={{ textAlign:"center", marginBottom:"24px" }}>
+          <div style={{
+            width:"56px", height:"56px", borderRadius:"50%",
+            background:"#fee2e2", margin:"0 auto 16px",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <i className="fa-solid fa-triangle-exclamation"
+              style={{ color:"#dc2626", fontSize:"22px" }}></i>
+          </div>
+          <h3 style={{
+            fontFamily:"var(--font-display)",
+            fontSize:"1.2rem", fontWeight:700, color:"#141814", marginBottom:"8px",
+          }}>
+            Delete this entry?
+          </h3>
+          <p style={{ fontSize:"13px", color:"#6b7280", lineHeight:1.6 }}>
+            This action cannot be undone and will permanently remove your journal entry.
+          </p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={onConfirm} className="btn-danger flex-1"><i className="fa-solid fa-trash mr-1.5"></i>Yes, delete</button>
-          <button onClick={onCancel}  className="btn-secondary flex-1">Cancel</button>
+        <div style={{ display:"flex", gap:"10px" }}>
+          <button onClick={onConfirm} style={{
+            flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+            gap:"8px", padding:"11px", borderRadius:"10px",
+            border:"none", background:"#dc2626", color:"#fff",
+            fontSize:"14px", fontWeight:600, cursor:"pointer",
+          }}>
+            <i className="fa-solid fa-trash" style={{ fontSize:"12px" }}></i>
+            Yes, delete
+          </button>
+          <button onClick={onCancel} style={{
+            flex:1, padding:"11px", borderRadius:"10px",
+            border:"1.5px solid #e8dbc0", background:"#fff",
+            color:"#374151", fontSize:"14px", fontWeight:600, cursor:"pointer",
+          }}>
+            Cancel
+          </button>
         </div>
       </div>
     </div>

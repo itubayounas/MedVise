@@ -1,22 +1,27 @@
-export default function StatCard({ label, value, icon, color = "sage", delay = 0 }) {
-  const colors = {
-    sage:   "bg-sage-50   text-sage-600   border-sage-200",
-    blue:   "bg-blue-50   text-blue-600   border-blue-200",
-    amber:  "bg-amber-50  text-amber-600  border-amber-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    red:    "bg-red-50    text-red-600    border-red-200",
+export default function StatCard({ label, value, icon, colorClass="sage", delay=0, trend }) {
+  const themes = {
+    sage:   {bg:"var(--color-sage-50)",   color:"var(--color-sage-600)",   border:"var(--color-sage-200)"},
+    blue:   {bg:"#eff6ff",                color:"#2563eb",                 border:"#bfdbfe"},
+    amber:  {bg:"#fffbeb",                color:"#d97706",                 border:"#fcd34d"},
+    purple: {bg:"#f5f3ff",                color:"#7c3aed",                 border:"#ddd6fe"},
+    red:    {bg:"#fef2f2",                color:"#dc2626",                 border:"#fecaca"},
+    teal:   {bg:"#f0fdfa",                color:"#0d9488",                 border:"#99f6e4"},
   };
+  const t = themes[colorClass] || themes.sage;
+
   return (
-    <div
-      className="card card-hover flex items-center gap-4 animate-fade-up"
-      style={{ animationDelay: `${delay}ms`, opacity: 0, animationFillMode: "forwards" }}
-    >
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 border ${colors[color]}`}>
-        <i className={icon}></i>
+    <div className="stat-card" style={{animationDelay:`${delay}ms`}}>
+      <div className="stat-icon" style={{background:t.bg,color:t.color,border:`1px solid ${t.border}`}}>
+        <i className={`fa-solid ${icon}`}></i>
       </div>
-      <div>
-        <p className="text-sm text-sage-600 font-medium">{label}</p>
-        <p className="text-3xl font-display font-bold text-charcoal-900 leading-tight">{value ?? "—"}</p>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="stat-label">{label}</div>
+        <div className="stat-value">{value ?? "—"}</div>
+        {trend && (
+          <div style={{fontSize:"0.7rem",marginTop:"0.25rem",color:trend.up?"#16a34a":"#dc2626",fontWeight:600}}>
+            <i className={`fa-solid fa-arrow-${trend.up?"up":"down"} mr-1`}></i>{trend.text}
+          </div>
+        )}
       </div>
     </div>
   );
