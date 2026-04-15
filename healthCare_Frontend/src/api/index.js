@@ -25,3 +25,4 @@ export const approveDoctor     = (id) => api.put(`/admin/approve/${id}`);
 export const getStats          = ()   => api.get("/admin/stats");
 export const getAllDoctors      = ()   => api.get("/admin/all-doctors");
 export const getAllUsers        = ()   => api.get("/admin/all-users");
+export const rejectDoctor = (id) => api.delete(`/admin/reject/${id}`);

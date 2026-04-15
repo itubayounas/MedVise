@@ -6,7 +6,7 @@ export const getPendingDoctors = async (req, res) => {
     res.json(pending);
   } catch (err) { res.status(500).json({ message:"Server error" }); }
 };
-
+//approve doctor by id
 export const approveDoctor = async (req, res) => {
   try {
     const doctor = await User.findOneAndUpdate(
@@ -17,6 +17,24 @@ export const approveDoctor = async (req, res) => {
     res.json(doctor);
   } catch (err) { res.status(500).json({ message:"Server error" }); }
 };
+//reject doctor by id
+export const rejectDoctor = async (req, res) => {
+  try {
+    const doctor = await User.findOneAndDelete({
+      _id: req.params.id,
+      role: "doctor",
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    res.json({ message: "Doctor rejected and removed" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 export const getStats = async (req, res) => {
   try {

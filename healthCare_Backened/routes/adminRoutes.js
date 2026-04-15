@@ -1,5 +1,5 @@
 import express from "express";
-import { getPendingDoctors, approveDoctor, getStats, getAllDoctors, getAllUsers } from "../controllers/adminController.js";
+import { getPendingDoctors, approveDoctor, getStats, getAllDoctors, getAllUsers, rejectDoctor } from "../controllers/adminController.js";
 import authMiddleware   from "../middleware/authMiddleware.js";
 import adminMiddleware  from "../middleware/adminMiddleware.js";
 
@@ -11,6 +11,7 @@ router.get("/all-users",   authMiddleware, adminMiddleware, getAllUsers);
 router.use(authMiddleware, adminMiddleware);
 router.get("/pending-doctors", getPendingDoctors);
 router.put("/approve/:id",     approveDoctor);
+router.delete("/reject/:id", rejectDoctor);
 router.get("/stats",           getStats);
 
 export default router;
