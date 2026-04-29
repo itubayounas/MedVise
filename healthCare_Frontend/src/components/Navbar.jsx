@@ -11,6 +11,7 @@ const NAV = {
   doctor: [
     { to:"/doctor",              icon:"fa-house",          label:"Dashboard"    },
     { to:"/doctor/appointments", icon:"fa-calendar-check", label:"Appointments" },
+    { to:"/doctor/profile",      icon:"fa-circle-user",    label:"My Profile"   },
   ],
   admin: [
     { to:"/admin",         icon:"fa-chart-line",  label:"Dashboard" },

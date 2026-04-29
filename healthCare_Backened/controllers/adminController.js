@@ -63,3 +63,14 @@ export const getAllUsers = async (req, res) => {
     res.json(users);
   } catch (err) { res.status(500).json({ message:"Server error" }); }
 };
+
+export const getAllDoctorsAdmin = async (req, res) => {
+  try {
+    const doctors = await User.find({ role: "doctor" })
+      .select("-password")
+      .sort({ createdAt: -1 });
+    res.json(doctors);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
